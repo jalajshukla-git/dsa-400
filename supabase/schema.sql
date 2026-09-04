@@ -196,3 +196,51 @@ drop trigger if exists on_auth_user_created on auth.users;
 create trigger on_auth_user_created
   after insert on auth.users
   for each row execute function public.handle_new_user();
+
+-- ═══════════════════════════════════════════════════════════════════════
+-- v2 additions: commitment id + platform tag + public verification
+-- ═══════════════════════════════════════════════════════════════════════
+alter table public.commitment add column if not exists commit_id text;
+create unique index if not exists commitment_commit_id_uq on public.commitment(commit_id) where commit_id is not null;
+
+alter table public.extra_items add column if not exists platform text;
+
+-- SECURITY DEFINER: returns only what a visitor is allowed to see.
+-- The statement is included ONLY for the owner; everyone else gets
+-- just the progress/consistency numbers (never the commit message).
+create or replace function public.get_commitment_verification(p_hash text)
+returns json
+language sql
+security definer
+set search_path = public
+stable
+as $$
+  select (
+    select json_build_object(
+      'found', true,
+      'commit_id', c.commit_id,
+      'username', coalesce(p.username, ''),
+      'start_date', c.start_date,
+      'end_date', c.end_date,
+      'hash', c.hash,
+      'is_owner', (auth.uid() = c.user_id),
+      'statement', case when auth.uid() = c.user_id then c.statement else null end,
+      'stats', (
+        select json_build_object(
+          'sealed', (select count(*)::int from public.day_progress dp
+                     where dp.user_id = c.user_id and dp.is_sealed
+                       and not exists (select 1 from public.excluded_days ed
+                                       where ed.user_id = c.user_id and ed.day_id = dp.day_id)),
+          'solved', (select count(*)::int from public.item_progress ip where ip.user_id = c.user_id),
+          'streak', coalesce((select streak from public.streak_log sl
+                              where sl.user_id = c.user_id order by sl.id desc limit 1), 0),
+          'best', coalesce((select max(streak) from public.streak_log sl2 where sl2.user_id = c.user_id), 0),
+          'active_days', 400 - (select count(*)::int from public.excluded_days ed2 where ed2.user_id = c.user_id)
+        )
+      )
+    )
+    from public.commitment c
+    left join public.profiles p on p.id = c.user_id
+    where c.hash = p_hash
+  );
+$$;
