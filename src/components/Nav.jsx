@@ -21,6 +21,7 @@ export default function Nav({ onSearch }) {
           <button className={`nav-link ${loc.pathname === '/' ? 'on' : ''}`} onClick={() => go('/')}>Tracker</button>
           <button className={`nav-link ${loc.pathname === '/patterns' ? 'on' : ''}`} onClick={() => go('/patterns')}>Pattern Master</button>
           <button className={`nav-link ${loc.pathname === '/questions' ? 'on' : ''}`} onClick={() => go('/questions')}>Questions</button>
+          <button className={`nav-link ${loc.pathname.startsWith('/note') ? 'on' : ''}`} onClick={() => go('/note')}>Daily Notes</button>
           <button className={`nav-link ${loc.pathname === '/profile' ? 'on' : ''}`} onClick={() => go('/profile')}>Profile</button>
           <button className={`nav-link ${loc.pathname === '/file' ? 'on' : ''}`} onClick={() => go('/file')}>Ledger</button>
         </nav>

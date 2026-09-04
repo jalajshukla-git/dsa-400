@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { lazy, Suspense, useEffect, useState } from 'react';
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from './context/AuthContext';
 import { bindToast } from './lib/toast';
@@ -11,6 +11,11 @@ import Commitment from './pages/Commitment';
 import Ledger from './pages/Ledger';
 import Profile from './pages/Profile';
 import Questions from './pages/Questions';
+import NotesManager from './pages/NotesManager';
+
+/* CodeMirror + markdown engine are heavy — load the note pages on demand */
+const NoteEditor = lazy(() => import('./pages/NoteEditor'));
+const NoteView = lazy(() => import('./pages/NoteView'));
 
 function Spinner() {
   return (
@@ -39,6 +44,9 @@ export default function App() {
         <Route path="/hash/:hash" element={<Commitment />} />
         <Route path="/patterns" element={<Protected><Patterns /></Protected>} />
         <Route path="/questions" element={<Questions />} />
+        <Route path="/note" element={<Protected><Suspense fallback={<Spinner />}><NoteEditor /></Suspense></Protected>} />
+        <Route path="/note/:slug" element={<Suspense fallback={<Spinner />}><NoteView /></Suspense>} />
+        <Route path="/notes" element={<Protected><NotesManager /></Protected>} />
         <Route path="/profile" element={<Protected><Profile /></Protected>} />
         <Route path="/file" element={<Protected><Ledger /></Protected>} />
         <Route path="/onboarding" element={<Protected><Onboarding /></Protected>} />

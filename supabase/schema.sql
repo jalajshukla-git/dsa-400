@@ -281,3 +281,39 @@ as $$
     where c.hash = p_hash
   );
 $$;
+
+-- ═══════════════════════════════════════════════════════════════════════
+-- v6 additions: published Daily Coding Articles (public read, owner write)
+-- ═══════════════════════════════════════════════════════════════════════
+create table if not exists public.articles (
+  slug             text primary key,
+  user_id          uuid references auth.users(id) on delete cascade,
+  title            text not null,
+  date             date not null default current_date,
+  day_streak       int  not null default 0,
+  tags             jsonb not null default '[]'::jsonb,
+  video_url        text,
+  content_markdown text not null default '',
+  is_published     boolean not null default true,
+  created_at       timestamptz not null default now(),
+  updated_at       timestamptz not null default now()
+);
+
+alter table public.articles enable row level security;
+
+drop policy if exists "articles public read" on public.articles;
+create policy "articles public read" on public.articles
+  for select using (is_published);
+
+drop policy if exists "articles owner write" on public.articles;
+create policy "articles owner write" on public.articles
+  for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
+
+-- ═══════════════════════════════════════════════════════════════════════
+-- v7 additions: schema versioning + GitHub source for articles
+-- ═══════════════════════════════════════════════════════════════════════
+alter table public.articles add column if not exists schema_version int not null default 1;
+alter table public.articles add column if not exists github_url text;
+
+-- v8: structured article blocks (example / complexity / mistakes / pattern)
+alter table public.articles add column if not exists blocks jsonb;

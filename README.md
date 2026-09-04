@@ -56,6 +56,8 @@ One **React (Vite) + Supabase** website that merges two projects into a single p
 | `/profile` | signed-in | Identity, certificate, stats, import, **full plan editor**, extras manager, removed log |
 | `/patterns` | signed-in | **Pattern Master** (40 patterns, cyan theme) |
 | `/hash/:hash` | see below | Commitment verification (owner vs public) |
+| `/note` | signed-in | **Daily Coding Article & Note Page** (orange/ember theme) |
+| `/note/:slug` | public | Published article (read-only, rendered from Markdown + JSON) |
 | `/file` | signed-in | Raw append-only event ledger (JSON export) |
 
 ---
@@ -120,6 +122,56 @@ username, and the `DSA400xxxxxxx` commitment-id.
 The login page and the verification page show a **fresh quote on every visit**
 (consistency / goals / discipline).
 
+### Daily Coding Article & Note Page (`/note`, `/note/:slug`)
+An "Orange / Ember" themed (`data-theme="orange"`, amber `#fb923c / #f97316 / #ea580c`
+on zinc/slate dark) article authoring system:
+
+- **Split Markdown editor + live preview** (Write / Split / Preview modes).
+- **Embedded code editors** (CodeMirror 6) inside the Markdown — with **context-aware
+  autocomplete** (C++ STL / `#include` headers / `std::`, plus Java, Python, JS keywords &
+  builtins), **bracket & parentheses matching** with auto-close and orange highlight, and
+  **multi-cursor editing** (Ctrl/Cmd+Click, Alt+Click, Ctrl/Cmd+D to select next occurrence).
+- **▶ Run** code snippets via the public Piston execution API.
+- **YouTube integration** — `[Video Title](://youtube.com/…)` renders an embedded player.
+- **Clickable timestamps** — `[12:34]` / `[1:02:03]` seek the video (window event
+  `dsa400:seek` + direct postMessage seek).
+- **Hyperlink insertion** toolbar, plus bold/italic/headings/quotes/code/hr.
+- **Publish Article** — compiles a **versioned JSON payload**
+  (`slug, title, date, dayStreak, tags, videoUrl, githubUrl, contentMarkdown, blocks,
+  isPublished, schemaVersion`) → stored locally + in the Supabase `articles` table → readable
+  by anyone at `/note/{slug}`. `schema_version` guarantees articles published today keep
+  rendering even after future design changes.
+
+### Article blocks (hybrid, optional — schema v2)
+Beyond the Markdown body, an article can carry structured blocks (stored as optional JSON,
+so old v1 articles render unchanged):
+- **📌 Example** — input / output / explanation, styled as separate code boxes.
+- **📈 Time & Space complexity** — big-O badges plus **small growth sparkline charts**
+  (O(1), O(log n), O(√n), O(n), O(n log n), O(n²), O(n³), O(2ⁿ), O(n!)) for both time and
+  space, in a collapsible block.
+- **🧩 Pattern recognition** — free-text block.
+- **⚠️ Mistakes I made** — optional, styled as a warning block.
+
+### GitHub problem source (no Supabase load)
+- Paste a GitHub folder link (e.g. `https://github.com/…/835-image-overlap`); the app
+  **fetches the `README.md` and solution code files (.cpp/.java/.py/.js/.ts) straight from
+  GitHub** and renders them in the article — nothing is copied into Supabase.
+- The README is rendered as Markdown in-page; solution files show as read-only code tabs.
+- **Never overrides your code**: if the article already has a code block, the GitHub
+  solution stays behind a "📦 GitHub source" toggle; if you wrote no code, it expands
+  automatically.
+
+### Pattern reference import
+- From **/patterns**, every pattern has a **"＋ Add to article"** button that opens the note
+  editor with the **entire pattern block pasted in** (what/model/identity/when-to-use/
+  complexity ladder/templates C++ & Java/sample walkthrough/practice set). Also available
+  as a **🧩 Pattern** tab in the editor's insert toolbar.
+
+### Management
+- **`/notes`** lists every published article (Supabase + local, merged) with open / edit /
+  download-JSON / delete. The editor also opens existing articles via `/note?edit={slug}`.
+- All timestamps render in **IST (Asia/Kolkata, +05:30)**.
+
 ### Pattern Master (`/patterns`)
 - The complete original `dsa_Patterns_new.html` content, preserved verbatim behind `/patterns`.
 - Cyan theme (the only non-emerald page), dark mode, no theme switcher.
@@ -162,14 +214,23 @@ prj-dsa/
     │   ├── lc-plan.js         # plan cross-reference: number → days (every LC question in the plan)
     │   ├── lc-lookup.js       # live-API fallback lookup for brand-new problems
     │   ├── import.js          # resolveImportToken / judgeFromUrl / judge classes
+    │   ├── articles.js        # article persistence (localStorage + Supabase `articles`)
+    │   ├── note-mdx.jsx       # markdown-it + video/timestamp rules + React token renderer
+    │   ├── note-video.js      # video registry + seekAllVideos (window event + postMessage)
+    │   ├── github.js          # parse GitHub folder links → fetch README + solution code
+    │   ├── pattern-md.js      # Pattern Master block → Markdown exporter (for articles)
     │   ├── quotes.js          # rotating motivational quotes
     │   ├── toast.js           # toast bus
     │   ├── tracker-data.js    # 400-day plan (phases, units, days, items) + LC cross-refs
     │   └── patterns-data.js   # the 40-pattern Pattern Master content
     ├── pages/                 # Login, Register, Onboarding, Tracker, Patterns,
-    │                          # Commitment (/hash), Ledger (/file), Profile, Questions
+    │                          # Commitment (/hash), Ledger (/file), Profile, Questions,
+    │                          # NoteEditor (/note), NoteView (/note/:slug),
+    │                          # NotesManager (/notes)
     └── components/            # Nav, Chain, SearchModal, TodayPanel, CalendarPanel,
                                # PlanPanel, ProgressPanel, CommitmentCard
+                               # + editor/ (CodeBlock · CodeMirror, VideoEmbed, Timestamp,
+                               #   ArticleBlocks, GitHubSection)
 ```
 
 ---
@@ -188,6 +249,7 @@ prj-dsa/
 | `notes` / `note_history` | pattern notes + edit timeline |
 | `events` | append-only ledger of everything the user did |
 | `streak_log` | streak snapshots recorded server-side |
+| `articles` | published Daily Notes — public read / owner write; versioned (`schema_version`), with `github_url` + `blocks` |
 
 The schema also defines a SECURITY DEFINER function
 `get_commitment_verification(p_hash)` that returns exactly what a visitor is allowed to see
