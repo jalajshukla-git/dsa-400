@@ -111,6 +111,7 @@ export default function Onboarding() {
         <div style={{ display: 'flex', gap: 8, marginBottom: 10, flexWrap: 'wrap' }}>
           <button className="btn btn-soft btn-sm" onClick={() => setUnits(new Set(UNITS.map((_, i) => i)))}>Select all</button>
           <button className="btn btn-ghost btn-sm" onClick={() => setUnits(new Set())}>Clear all</button>
+          <a className="btn btn-ghost btn-sm" href="/questions" target="_blank" rel="noopener noreferrer">🔍 Browse every question first</a>
           <span className="chip chip-neutral" style={{ marginLeft: 'auto' }}>{selCount}/{UNITS.length} topics</span>
         </div>
         <div className="topic-list">

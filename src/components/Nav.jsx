@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
 export default function Nav({ onSearch }) {
@@ -20,15 +20,20 @@ export default function Nav({ onSearch }) {
         <nav className={`nav-links ${open ? 'open' : ''}`}>
           <button className={`nav-link ${loc.pathname === '/' ? 'on' : ''}`} onClick={() => go('/')}>Tracker</button>
           <button className={`nav-link ${loc.pathname === '/patterns' ? 'on' : ''}`} onClick={() => go('/patterns')}>Pattern Master</button>
-          <button className={`nav-link ${loc.pathname === '/file' ? 'on' : ''}`} onClick={() => go('/file')}>Raw ledger</button>
+          <button className={`nav-link ${loc.pathname === '/questions' ? 'on' : ''}`} onClick={() => go('/questions')}>Questions</button>
+          <button className={`nav-link ${loc.pathname === '/profile' ? 'on' : ''}`} onClick={() => go('/profile')}>Profile</button>
+          <button className={`nav-link ${loc.pathname === '/file' ? 'on' : ''}`} onClick={() => go('/file')}>Ledger</button>
         </nav>
         <div className="nav-right">
           {onSearch && (
             <button className="icon-btn" title="Search by question or LeetCode number" onClick={onSearch}>⌕</button>
           )}
+          {configured && !user && <button className="btn btn-primary btn-sm" onClick={() => go('/login')}>Sign in</button>}
           <span className="nav-user">
-            {configured ? <b>{user?.user_metadata?.username || user?.email?.split('@')[0]}</b> : <b>demo</b>}
-            {configured && <button className="btn btn-ghost btn-sm" onClick={() => { signOut(); nav('/login'); }}>Sign out</button>}
+            {configured && user
+              ? <b>{user?.user_metadata?.username || user?.email?.split('@')[0]}</b>
+              : !configured && <b>demo</b>}
+            {configured && user && <button className="btn btn-ghost btn-sm" onClick={() => { signOut(); go('/login'); }}>Sign out</button>}
           </span>
           <button className="icon-btn nav-burger" onClick={() => setOpen(!open)} aria-label="Menu">≡</button>
         </div>
