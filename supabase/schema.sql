@@ -163,23 +163,50 @@ alter table public.note_history     enable row level security;
 alter table public.events           enable row level security;
 alter table public.streak_log       enable row level security;
 
+-- Policies are dropped-then-created so this script is safe to re-run
+-- (Postgres has no `create policy if not exists`).
+
+drop policy if exists "own profiles"     on public.profiles;
 create policy "own profiles"    on public.profiles     for all using (auth.uid() = id);
+
+drop policy if exists "own commitment"   on public.commitment;
 create policy "own commitment"  on public.commitment   for select using (auth.uid() = user_id);
+drop policy if exists "insert commitment" on public.commitment;
 create policy "insert commitment" on public.commitment for insert with check (auth.uid() = user_id);
 -- note: no UPDATE policy on commitment → start_date & hash are permanent
 
+drop policy if exists "own excluded"     on public.excluded_days;
 create policy "own excluded"    on public.excluded_days for all using (auth.uid() = user_id);
+
+drop policy if exists "own removed"      on public.removed_items;
 create policy "own removed"     on public.removed_items for all using (auth.uid() = user_id);
+
+drop policy if exists "own extras"       on public.extra_items;
 create policy "own extras"      on public.extra_items   for all using (auth.uid() = user_id);
+
+drop policy if exists "own day_prog"     on public.day_progress;
 create policy "own day_prog"    on public.day_progress  for all using (auth.uid() = user_id);
+
+drop policy if exists "own item_prog"    on public.item_progress;
 create policy "own item_prog"   on public.item_progress for all using (auth.uid() = user_id);
+
+drop policy if exists "own notes"        on public.notes;
 create policy "own notes"       on public.notes         for all using (auth.uid() = user_id);
+
+drop policy if exists "own note_hist"    on public.note_history;
 create policy "own note_hist"   on public.note_history  for select using (auth.uid() = user_id);
+drop policy if exists "insert note_hist" on public.note_history;
 create policy "insert note_hist" on public.note_history for insert with check (auth.uid() = user_id);
+
+drop policy if exists "own events sel"   on public.events;
 create policy "own events sel"  on public.events        for select using (auth.uid() = user_id);
+drop policy if exists "own events ins"   on public.events;
 create policy "own events ins"  on public.events        for insert with check (auth.uid() = user_id);
 -- events & streak_log are append-only: no UPDATE/DELETE policies
+
+drop policy if exists "own streak sel"   on public.streak_log;
 create policy "own streak sel"  on public.streak_log    for select using (auth.uid() = user_id);
+drop policy if exists "own streak ins"   on public.streak_log;
 create policy "own streak ins"  on public.streak_log    for insert with check (auth.uid() = user_id);
 
 -- ── auto-create a profile row on signup ─────────────────────────────────
