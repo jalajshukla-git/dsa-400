@@ -8,7 +8,7 @@
   --surface-hover: rgba(255,255,255,.1);
   --border: rgba(255,255,255,.09); --border-strong: rgba(255,255,255,.17);
   --text: #f2f7f4; --text-dim: #a7b5ae; --text-mute: #6f8077; --text-faint: #46564e;
-
+  --nav-h: 57px;
   --ok: #10b981; --ok-bg: rgba(16,185,129,.13);
   --warn: #f59e0b; --warn-bg: rgba(245,158,11,.13);
   --err: #ef4444; --err-bg: rgba(239,68,68,.13);
@@ -371,11 +371,12 @@ footer .wrap { display: flex; gap: 18px; flex-wrap: wrap; justify-content: space
 /* ═══ Hero: canvas as background layer, content in normal flow above it ═══ */
 .pat-hero {
   position: relative;
-  min-height: min(92vh, 780px);
+  min-height: calc(100svh - var(--nav-h));   /* svh = small viewport height, accounts for mobile browser chrome */
+  height: calc(100svh - var(--nav-h));
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 64px 24px 56px;
+  padding: 48px 24px 40px;
   text-align: center;
   overflow: hidden;
 }
