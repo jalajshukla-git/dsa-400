@@ -19,6 +19,19 @@ for (const lc of Object.keys(LC_TO_DAYS)) {
 const pKey = (d, i) => `${d}:${i}`;
 const todayPlanDay = start => (start ? clamp(dayDiff(todayIso(), start) + 1, 1, N_DAYS) : 1);
 
+/* streak over a (sealed + excluded + commitment) snapshot — excluded days never break the chain */
+function computeStreak(st) {
+  const start = st.commitment?.start_date || null;
+  const tpd = todayPlanDay(start);
+  let streak = 0;
+  let d = st.sealed[tpd] ? tpd : tpd - 1;
+  for (; d >= 1; d--) {
+    if (st.excluded[d]) continue;
+    if (st.sealed[d]) streak++; else break;
+  }
+  return streak;
+}
+
 const empty = () => ({
   commitment: null, excluded: {}, removed: {}, extras: [], sealed: {},
   done: {}, notes: {}, best: 0,
@@ -229,13 +242,7 @@ export function useTrackerData() {
     let pointer = 1;
     for (const d of DAYS) { if (included(d) && !s.sealed[d.id]) { pointer = d.id; break; } }
     // streak: consecutive sealed calendar days ending today/yesterday
-    let streak = 0;
-    let d = s.sealed[tpd] ? tpd : tpd - 1;
-    for (; d >= 1; d--) {
-      const day = DAYS[d - 1];
-      if (s.excluded[d]) continue;
-      if (s.sealed[d]) streak++; else break;
-    }
+    const streak = computeStreak(s);
     let best = 0, run = 0;
     for (const day of DAYS) {
       if (s.excluded[day.id]) { continue; }
