@@ -3,8 +3,6 @@ import { Link, useParams } from 'react-router-dom';
 import { loadArticle } from '../lib/articles';
 import { renderMarkdown, extractYouTubeId } from '../lib/note-mdx';
 import { VideoEmbed } from '../components/editor/VideoEmbed';
-import GitHubSection from '../components/editor/GitHubSection';
-import ArticleBlocks from '../components/editor/ArticleBlocks';
 import { pretty } from '../lib/utils';
 
 export default function NoteView() {
@@ -19,7 +17,6 @@ export default function NoteView() {
   }, [slug]);
 
   const videoId = useMemo(() => (art && art.videoUrl ? extractYouTubeId(art.videoUrl) : null), [art]);
-  const hasUserCode = useMemo(() => art ? /```/.test(art.contentMarkdown || '') : false, [art]);
 
   if (status === 'loading') {
     return <div className="n-page" data-theme="orange" style={{ display: 'grid', placeItems: 'center' }}>LOADING ARTICLE…</div>;
@@ -58,15 +55,8 @@ export default function NoteView() {
 
         {videoId && <VideoEmbed videoId={videoId} title={art.title} />}
 
-        {art.githubUrl && (
-          <div style={{ marginBottom: 14 }}>
-            <GitHubSection url={art.githubUrl} autoExpand={!hasUserCode} />
-          </div>
-        )}
-
         <article className="n-art-body">
           {renderMarkdown(art.contentMarkdown, { readOnly: true })}
-          <ArticleBlocks blocks={art.blocks} />
         </article>
 
         <footer className="n-art-foot">
