@@ -209,12 +209,22 @@ create policy "own streak sel"  on public.streak_log    for select using (auth.u
 drop policy if exists "own streak ins"   on public.streak_log;
 create policy "own streak ins"  on public.streak_log    for insert with check (auth.uid() = user_id);
 
--- ── auto-create a profile row on signup ─────────────────────────────────
+-- ── auto-create a profile row on signup (email AND OAuth providers) ────
 create or replace function public.handle_new_user()
 returns trigger language plpgsql security definer set search_path = public as $$
 begin
   insert into public.profiles (id, username)
-  values (new.id, coalesce(new.raw_user_meta_data->>'username', split_part(new.email,'@',1)))
+  values (
+    new.id,
+    coalesce(
+      new.raw_user_meta_data->>'username',
+      new.raw_user_meta_data->>'user_name',          -- GitHub login
+      new.raw_user_meta_data->>'preferred_username', -- other OAuth providers
+      new.raw_user_meta_data->>'full_name',
+      new.raw_user_meta_data->>'name',
+      split_part(coalesce(new.email,'user'),'@',1)
+    )
+  )
   on conflict (id) do nothing;
   return new;
 end;

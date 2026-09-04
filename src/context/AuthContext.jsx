@@ -33,15 +33,37 @@ export function AuthProvider({ children }) {
     return { user: data.user, error };
   }, []);
 
+  const signInWithGitHub = useCallback(async () => {
+    if (!configured) {
+      return { error: new Error('Supabase is not connected — add VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY first.') };
+    }
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'github',
+      options: { redirectTo: `${window.location.origin}/` },
+    });
+    return { error };
+  }, [configured]);
+
   const signOut = useCallback(async () => {
     await supabase.auth.signOut();
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, loading, configured, signUp, signIn, signOut }}>
+    <AuthContext.Provider value={{ user, loading, configured, signUp, signIn, signInWithGitHub, signOut }}>
       {children}
     </AuthContext.Provider>
   );
 }
 
 export const useAuth = () => useContext(AuthContext);
+
+/* Resolve a human-readable name across providers:
+   email signup → user_metadata.username
+   GitHub       → user_metadata.user_name / name
+   fallback     → email prefix */
+export const displayName = u => {
+  if (!u) return null;
+  const m = u.user_metadata || {};
+  return m.username || m.user_name || m.preferred_username || m.full_name || m.name
+    || (u.email ? u.email.split('@')[0] : 'user');
+};

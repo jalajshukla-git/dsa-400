@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
+import { useAuth, displayName } from '../context/AuthContext';
 import { useTrackerData } from '../hooks/useTrackerData';
 import { TRACKER_DATA } from '../lib/tracker-data';
 import { todayIso, ymdForDay, pretty } from '../lib/utils';
@@ -149,7 +149,7 @@ export default function Onboarding() {
 
       {/* step 4 — done */}
       <div className={`onb-step ${step === 4 ? 'on' : ''}`}>
-        {comm && <CommitmentCard commitment={comm} username={user?.user_metadata?.username || user?.email} />}
+        {comm && <CommitmentCard commitment={comm} username={displayName(user)} />}
         <div style={{ marginTop: 20, display: 'flex', gap: 10, flexWrap: 'wrap' }}>
           <button className="btn btn-primary btn-lg" onClick={() => nav('/')}>Enter the tracker →</button>
           <button className="btn btn-ghost btn-lg" onClick={() => nav('/patterns')}>Explore Pattern Master</button>

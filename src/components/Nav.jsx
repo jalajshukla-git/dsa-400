@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
+import { useAuth, displayName } from '../context/AuthContext';
 
 export default function Nav({ onSearch }) {
   const { user, signOut, configured } = useAuth();
@@ -31,7 +31,7 @@ export default function Nav({ onSearch }) {
           {configured && !user && <button className="btn btn-primary btn-sm" onClick={() => go('/login')}>Sign in</button>}
           <span className="nav-user">
             {configured && user
-              ? <b>{user?.user_metadata?.username || user?.email?.split('@')[0]}</b>
+              ? <b>{displayName(user)}</b>
               : !configured && <b>demo</b>}
             {configured && user && <button className="btn btn-ghost btn-sm" onClick={() => { signOut(); go('/login'); }}>Sign out</button>}
           </span>

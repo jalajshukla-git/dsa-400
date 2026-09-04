@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
+import { useAuth, displayName } from '../context/AuthContext';
 import { useTrackerData } from '../hooks/useTrackerData';
 import { TRACKER_DATA } from '../lib/tracker-data';
 import { LC_TITLES } from '../lib/tracker-data';
@@ -33,7 +33,7 @@ export default function Profile() {
   const [busy, setBusy] = useState(false);
   const [quote] = useState(() => pickQuote());
 
-  const username = user?.user_metadata?.username || user?.email?.split('@')[0] || 'you';
+  const username = displayName(user) || 'you';
   const email = user?.email || '';
 
   const stats = useMemo(() => {

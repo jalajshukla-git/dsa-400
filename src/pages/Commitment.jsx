@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
-import { useAuth } from '../context/AuthContext';
+import { useAuth, displayName } from '../context/AuthContext';
 import { useTrackerData } from '../hooks/useTrackerData';
 import { TRACKER_DATA } from '../lib/tracker-data';
 import CommitmentCard from '../components/CommitmentCard';
@@ -139,7 +139,7 @@ export default function Commitment() {
           </p>
         </div>
 
-        <CommitmentCard commitment={s.commitment} username={user?.user_metadata?.username || user?.email?.split('@')[0]} progress={progress} />
+        <CommitmentCard commitment={s.commitment} username={displayName(user)} progress={progress} />
 
         {/* analysis */}
         <div className="prog-grid" style={{ marginTop: 20 }}>
