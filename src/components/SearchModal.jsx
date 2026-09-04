@@ -1,6 +1,8 @@
-import { useMemo, useState } from 'react';
-import { TRACKER_DATA, LC_TO_DAYS, LC_TITLES } from '../lib/tracker-data';
+import { useEffect, useMemo, useState } from 'react';
+import { TRACKER_DATA, LC_TITLES } from '../lib/tracker-data';
+import { LC_TO_DAYS } from '../lib/lc-plan';
 import { lcInfo } from '../lib/lc-titles';
+import { lcInfoAny } from '../lib/lc-lookup';
 import { extraLabel } from '../lib/utils';
 import { toast } from '../lib/toast';
 
@@ -11,15 +13,26 @@ export default function SearchModal({ s, onClose, onOpenDay }) {
   const [q, setQ] = useState('');
   const [mode, setMode] = useState(null); // null | {lc, title, url, targetDay}
   const [targetDay, setTargetDay] = useState('');
+  const [liveInfo, setLiveInfo] = useState(null);
 
   const numeric = /^\d+$/.test(q.trim());
   const qn = q.trim().toLowerCase();
+
+  // live fallback: if the number isn't in the bundled index, hit the API once
+  useEffect(() => {
+    if (!numeric) { setLiveInfo(null); return; }
+    const local = lcInfo(qn);
+    if (local) { setLiveInfo(local); return; }
+    let alive = true;
+    lcInfoAny(qn).then(info => { if (alive && info) setLiveInfo(info); });
+    return () => { alive = false; };
+  }, [numeric, qn]);
 
   const results = useMemo(() => {
     if (!qn) return null;
     if (numeric) {
       const id = qn;
-      const info = lcInfo(id);                       // full LeetCode index (4,042 problems)
+      const info = lcInfo(id) || liveInfo;          // bundled index → live fallback
       const hits = (LC_TO_DAYS[id] || []).filter(h => !s.excluded[h.day]);
       const inPatterns = LC_TITLES.some(x => String(x.n) === id);
       const extra = s.extras.filter(e => e.lc === id);
@@ -41,7 +54,7 @@ export default function SearchModal({ s, onClose, onOpenDay }) {
       if (norm(x.t).includes(norm(qn))) lcMatches.push(x);
     }
     return { kind: 'text', hits: hits.slice(0, 30), extras, lcMatches: lcMatches.slice(0, 10) };
-  }, [qn, numeric, s]);
+  }, [qn, numeric, s, liveInfo]);
 
   const startAdd = (lc, title, url) => {
     setMode({ lc: lc || '', title: title || q, url: url || '', targetDay: '' });

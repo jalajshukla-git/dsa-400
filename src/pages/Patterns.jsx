@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import Nav from '../components/Nav';
 import { P, D } from '../lib/patterns-data';
-import { LC_TO_DAYS } from '../lib/tracker-data';
+import { LC_TO_DAYS } from '../lib/lc-plan';
 import { toast } from '../lib/toast';
 
 /* ═══════════ syntax highlighter (ported from dsa_Patterns_new.html) ═══════════ */

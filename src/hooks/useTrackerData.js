@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { supabase, configured } from '../lib/supabase';
 import { useAuth } from '../context/AuthContext';
-import { TRACKER_DATA, LC_TO_DAYS, LC_TO_PATTERN, LC_TITLES } from '../lib/tracker-data';
+import { TRACKER_DATA, LC_TO_PATTERN, LC_TITLES } from '../lib/tracker-data';
+import { LC_TO_DAYS } from '../lib/lc-plan';
 import { todayIso, dayDiff, ymdForDay, commitmentHash, clamp, genCommitId } from '../lib/utils';
 
 const DAYS = TRACKER_DATA.days;

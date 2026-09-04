@@ -93,9 +93,14 @@ One **React (Vite) + Supabase** website that merges two projects into a single p
 
 ### Search (`⌕`, opens from the nav)
 - Search by question name **or LeetCode number**.
-- `56` instantly shows **56 · Merge Intervals** wherever it lives in your 400 days
-  (which day, or "covered in Pattern Master", or "your extra").
-- If it's not in your plan, you get a one-tap **Add** with an optional **schedule day**.
+- `452` instantly shows **452 · Minimum Number of Arrows to Burst Balloons** wherever it lives
+  in your 400 days (which day, or "covered in Pattern Master", or "your extra").
+- Backed by a **complete LeetCode index** (every problem: number → title + link) plus a
+  **complete plan cross-reference** (every LeetCode-linked question in the 400-day plan → its
+  day). No redundancy: a problem already in the plan is shown as *found*, never offered as an import.
+- If a brand-new number isn't in the bundled index, it falls back to the live
+  `https://leetcode.com/api/problems/all/` API (fetched once, cached in memory).
+- If it's genuinely not in your plan, you get a one-tap **Add** with an optional **schedule day**.
 
 ### Commitment certificate (image)
 Contains **only**: start date, end date (stacked vertically), SHA-512 hash, QR code,
@@ -141,7 +146,9 @@ prj-dsa/
 ├── .env.example               # VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY template
 ├── DEPLOY.md                  # step-by-step Supabase + Vercel + GitHub OAuth guide
 ├── supabase/schema.sql        # tables, RLS, triggers, verification RPC (idempotent)
-├── tools/extract.mjs          # one-time generator (parses the originals into data)
+├── tools/
+│   ├── extract.mjs            # one-time generator (parses the originals into data)
+│   └── build-lc-index.mjs     # regenerates lc-titles.js + lc-plan.js from the live LC index
 └── src/
     ├── main.jsx               # entry, mounts <App/>
     ├── App.jsx                # routes + protected-route wrapper
@@ -151,7 +158,9 @@ prj-dsa/
     ├── lib/
     │   ├── supabase.js        # client + configured flag
     │   ├── utils.js           # dates, SHA-512, commitmentHash, genCommitId, extraLabel
-    │   ├── lc-titles.js       # full LeetCode index (number → title + slug), 4,042 problems
+    │   ├── lc-titles.js       # full LeetCode index (number → title + slug), ALL problems
+    │   ├── lc-plan.js         # plan cross-reference: number → days (every LC question in the plan)
+    │   ├── lc-lookup.js       # live-API fallback lookup for brand-new problems
     │   ├── import.js          # resolveImportToken / judgeFromUrl / judge classes
     │   ├── quotes.js          # rotating motivational quotes
     │   ├── toast.js           # toast bus
@@ -259,9 +268,11 @@ to make it permanent and multi-device.
 ## Scripts
 
 ```bash
-npm run dev      # start the Vite dev server
-npm run build    # production build → dist/
-npm run preview  # preview the production build
+npm run dev       # start the Vite dev server
+npm run build     # production build → dist/
+npm run preview   # preview the production build
+npm run update:lc # regenerate the LeetCode indexes (lc-titles.js + lc-plan.js)
+                  # run weekly, or whenever LeetCode adds problems / the plan changes
 ```
 
 ---
