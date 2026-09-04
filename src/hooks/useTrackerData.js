@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { supabase, configured } from '../lib/supabase';
 import { useAuth } from '../context/AuthContext';
 import { TRACKER_DATA, LC_TO_DAYS, LC_TO_PATTERN, LC_TITLES } from '../lib/tracker-data';
-import { todayIso, dayDiff, ymdForDay, commitmentHash, clamp } from '../lib/utils';
+import { todayIso, dayDiff, ymdForDay, commitmentHash, clamp, genCommitId } from '../lib/utils';
 
 const DAYS = TRACKER_DATA.days;
 const UNITS = TRACKER_DATA.units;
@@ -75,7 +75,7 @@ export function useTrackerData() {
       st.commitment = c.data || null;
       (ex.data || []).forEach(r => { st.excluded[r.day_id] = true; });
       (rm.data || []).filter(r => !r.restored).forEach(r => { (st.removed[r.day_id] = st.removed[r.day_id] || {})[r.item_idx] = true; });
-      st.extras = (exi.data || []).map(r => ({ id: r.id, lc: r.lc_number, title: r.title, url: r.url, target_day: r.target_day, status: r.status, done_at: r.done_at }));
+      st.extras = (exi.data || []).map(r => ({ id: r.id, lc: r.lc_number, title: r.title, url: r.url, platform: r.platform, target_day: r.target_day, status: r.status, done_at: r.done_at }));
       (dp.data || []).forEach(r => { if (r.is_sealed) st.sealed[r.day_id] = true; });
       (ip.data || []).forEach(r => { st.done[pKey(r.day_id, r.item_idx)] = true; });
       (nt.data || []).forEach(r => { st.notes[r.day_id] = r.text; });
@@ -102,11 +102,12 @@ export function useTrackerData() {
   const setCommitment = useCallback(async ({ statement, startDate }) => {
     const endDate = ymdForDay(startDate, N_DAYS);
     const hash = await commitmentHash(statement, userId);
-    const comm = { statement, hash, start_date: startDate, end_date: endDate };
+    const commitId = genCommitId();
+    const comm = { statement, hash, start_date: startDate, end_date: endDate, commit_id: commitId };
     const ns = { ...s, commitment: comm };
     if (usingSupabase) {
       const { error } = await supabase.from('commitment').insert({
-        user_id: userId, statement, hash, start_date: startDate, end_date: endDate,
+        user_id: userId, statement, hash, commit_id: commitId, start_date: startDate, end_date: endDate,
       });
       if (error) throw error;
     }
@@ -158,11 +159,11 @@ export function useTrackerData() {
     return data || [];
   }, [usingSupabase, userId]);
 
-  const addExtra = useCallback(async ({ lc, title, url, targetDay }) => {
-    const item = { id: Date.now(), lc: lc || null, title, url: url || null, target_day: targetDay || null, status: targetDay ? 'scheduled' : 'later', done_at: null };
+  const addExtra = useCallback(async ({ lc, title, url, platform, targetDay }) => {
+    const item = { id: Date.now(), lc: lc || null, title, url: url || null, platform: platform || null, target_day: targetDay || null, status: targetDay ? 'scheduled' : 'later', done_at: null };
     const ns = { ...s, extras: [...s.extras, item] };
     if (usingSupabase) {
-      const { data, error } = await supabase.from('extra_items').insert({ user_id: userId, lc_number: lc, title, url, target_day: targetDay, status: item.status }).select().single();
+      const { data, error } = await supabase.from('extra_items').insert({ user_id: userId, lc_number: lc, title, url, platform, target_day: targetDay, status: item.status }).select().single();
       if (error) throw error;
       item.id = data.id;
       ns.extras = ns.extras.map(e => (e === item ? item : e));
@@ -170,6 +171,15 @@ export function useTrackerData() {
     await logEvent('add_extra', { day: targetDay || null, text: title });
     persist(ns);
     return item;
+  }, [s, usingSupabase, userId, logEvent, persist]);
+
+  const scheduleExtra = useCallback(async (id, targetDay) => {
+    const day = targetDay || null;
+    const ns = { ...s, extras: s.extras.map(e => e.id === id ? { ...e, target_day: day, status: day ? 'scheduled' : 'later' } : e) };
+    if (usingSupabase) await supabase.from('extra_items').update({ target_day: day, status: day ? 'scheduled' : 'later' }).eq('id', id);
+    const ex = ns.extras.find(e => e.id === id);
+    await logEvent('add_extra', { day, text: ex?.title });
+    persist(ns);
   }, [s, usingSupabase, userId, logEvent, persist]);
 
   const setExtraDone = useCallback(async (id, on) => {
@@ -274,7 +284,7 @@ export function useTrackerData() {
     ...derived,
     dayDone, isLocked,
     setCommitment, toggleProb, sealDay, setNote, loadNoteHistory,
-    addExtra, setExtraDone, removeExtra,
+    addExtra, scheduleExtra, setExtraDone, removeExtra,
     setDayIncluded, setUnitIncluded, removeItem, restoreItem,
     ITEM_PATTERN, LC_TO_DAYS, LC_TO_PATTERN, LC_TITLES,
   };

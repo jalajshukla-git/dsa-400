@@ -9,6 +9,8 @@ import Tracker from './pages/Tracker';
 import Patterns from './pages/Patterns';
 import Commitment from './pages/Commitment';
 import Ledger from './pages/Ledger';
+import Profile from './pages/Profile';
+import Questions from './pages/Questions';
 
 function Spinner() {
   return (
@@ -36,6 +38,8 @@ export default function App() {
         <Route path="/register" element={<Register />} />
         <Route path="/hash/:hash" element={<Commitment />} />
         <Route path="/patterns" element={<Protected><Patterns /></Protected>} />
+        <Route path="/questions" element={<Questions />} />
+        <Route path="/profile" element={<Protected><Profile /></Protected>} />
         <Route path="/file" element={<Protected><Ledger /></Protected>} />
         <Route path="/onboarding" element={<Protected><Onboarding /></Protected>} />
         <Route path="/" element={<Protected><Tracker /></Protected>} />

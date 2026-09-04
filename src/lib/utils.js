@@ -22,6 +22,16 @@ export const commitmentHash = async (statement, userId) =>
 export const esc = s => String(s).replace(/[&<>"']/g, c =>
   ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
+/* ── unique commitment id: DSA400 + 7 unambiguous uppercase chars ── */
+export function genCommitId() {
+  const ALPHA = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789'; // no I L O 0 1
+  const rnd = new Uint32Array(7);
+  crypto.getRandomValues(rnd);
+  let s = '';
+  for (let i = 0; i < 7; i++) s += ALPHA[rnd[i] % ALPHA.length];
+  return 'DSA400' + s;
+}
+
 /* ── misc ── */
 export const clamp = (n, lo, hi) => Math.max(lo, Math.min(hi, n));
 export const lcSlug = t => String(t).toLowerCase().replace(/[^a-z0-9 ]/g, '').replace(/\s+/g, '-');
