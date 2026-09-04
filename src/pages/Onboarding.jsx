@@ -106,7 +106,9 @@ export default function Onboarding() {
         <div className="card-t">3 · Choose what to learn</div>
         <p className="card-d" style={{ marginBottom: 10 }}>
           You decide the plan. Leave a topic on to include it, or turn it off to skip it —
-          you can change this anytime (removed topics stay logged so you can add them back later).
+          you can change this anytime (removed topics stay logged so you can add them back later).{' '}
+          <b>You can fully customize everything — every week, every day, every question — from your Profile
+          after signing up.</b>
         </p>
         <div style={{ display: 'flex', gap: 8, marginBottom: 10, flexWrap: 'wrap' }}>
           <button className="btn btn-soft btn-sm" onClick={() => setUnits(new Set(UNITS.map((_, i) => i)))}>Select all</button>

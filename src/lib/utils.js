@@ -36,3 +36,6 @@ export function genCommitId() {
 export const clamp = (n, lo, hi) => Math.max(lo, Math.min(hi, n));
 export const lcSlug = t => String(t).toLowerCase().replace(/[^a-z0-9 ]/g, '').replace(/\s+/g, '-');
 export const lcURL = (id, title) => 'https://leetcode.com/problems/' + lcSlug(title) + '/';
+
+/* display label for a user-added question → "LFU Cache : 460" */
+export const extraLabel = e => (e && e.lc ? `${e.title} : ${e.lc}` : e && e.title);

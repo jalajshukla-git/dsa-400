@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useParams, Navigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useAuth, displayName } from '../context/AuthContext';
 import { useTrackerData } from '../hooks/useTrackerData';
@@ -13,15 +13,11 @@ const UNITS = TRACKER_DATA.units;
 
 export default function Commitment() {
   const { hash } = useParams();
-  const { user, loading: authLoading, signIn, configured } = useAuth();
+  const { user, loading: authLoading, configured } = useAuth();
   const s = useTrackerData();
 
   const [data, setData] = useState(null);      // verification result
   const [status, setStatus] = useState('loading'); // loading | notfound | nodb | ok
-  const [email, setEmail] = useState('');
-  const [pw, setPw] = useState('');
-  const [err, setErr] = useState('');
-  const [busy, setBusy] = useState(false);
   const [quote] = useState(() => pickQuote());
 
   useEffect(() => {
@@ -37,14 +33,6 @@ export default function Commitment() {
   }, [hash, configured, user?.id]);
 
   const isOwner = Boolean(user && (data?.is_owner || s.commitment?.hash === hash));
-
-  const doLogin = async e => {
-    e.preventDefault();
-    setBusy(true); setErr('');
-    const { error } = await signIn(email, pw);
-    setBusy(false);
-    if (error) setErr(error.message);
-  };
 
   /* ── derived owner stats ── */
   const owner = useMemo(() => {
@@ -102,26 +90,9 @@ export default function Commitment() {
     return <div style={{ minHeight: '100vh', display: 'grid', placeItems: 'center', color: 'var(--text-mute)' }}>VERIFYING…</div>;
   }
 
-  /* ── not logged in → beautiful login ── */
+  /* ── not logged in → redirect to login, then return here to verify ── */
   if (!user) {
-    return (
-      <div className="auth-wrap">
-        <div className="card auth-card">
-          <div className="auth-logo"><span className="brand-mark">◈</span> DSA·400</div>
-          <div className="auth-sub">Sign in to verify this commitment</div>
-          <div className="quote-card">“{quote}”</div>
-          {err && <div className="auth-err">{err}</div>}
-          <form onSubmit={doLogin}>
-            <div className="field"><label>Email</label><input type="email" value={email} onChange={e => setEmail(e.target.value)} required autoComplete="email" /></div>
-            <div className="field"><label>Password</label><input type="password" value={pw} onChange={e => setPw(e.target.value)} required autoComplete="current-password" /></div>
-            <button className="btn btn-primary btn-lg" style={{ width: '100%' }} disabled={busy}>{busy ? 'Signing in…' : 'Sign in & verify'}</button>
-          </form>
-          <div style={{ textAlign: 'center', marginTop: 14, fontSize: 13, color: 'var(--text-mute)' }}>
-            No account? <Link to="/register">Create one</Link>
-          </div>
-        </div>
-      </div>
-    );
+    return <Navigate to={`/login?return=${encodeURIComponent('/hash/' + hash)}`} replace />;
   }
 
   /* ── owner view ── */

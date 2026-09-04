@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { TRACKER_DATA } from '../lib/tracker-data';
 import { effectiveItems } from '../hooks/useTrackerData';
+import { extraLabel } from '../lib/utils';
 
 const UNITS = TRACKER_DATA.units;
 const DAYS = TRACKER_DATA.days;
@@ -50,6 +51,7 @@ export default function PlanPanel({ s, onOpenDay }) {
         if (shown.length === 0) return null;
         const doneN = days.filter(d => s.sealed[d.id]).length;
         const excludedAll = days.every(d => s.excluded[d.id]);
+        const incN = days.filter(d => !s.excluded[d.id]).length;
         return (
           <details className="unit" key={ui} id={`unit-${ui}`} open={days.some(d => d.id === s.pointer)}>
             <summary className="unit-sum">
@@ -61,6 +63,7 @@ export default function PlanPanel({ s, onOpenDay }) {
               <span className="u-meta">
                 <span className="u-bar"><i style={{ width: (100 * doneN / days.length) + '%' }} /></span>
                 <span className="u-count">{doneN}/{days.length}</span>
+                <span className="chip chip-neutral" title="included days count toward your plan; optional days are skipped but stay logged">{incN} included · {days.length - incN} optional</span>
                 <button className="chip" title={excludedAll ? 'Include this topic' : 'Make this topic optional'}
                   onClick={e => { e.preventDefault(); s.setUnitIncluded(ui, excludedAll); }}>
                   {excludedAll ? '＋ include' : 'optional'}
@@ -86,8 +89,9 @@ export default function PlanPanel({ s, onOpenDay }) {
                         <li key={it.kind === 'extra' ? `x${it.extraId}` : it.idx} className={`pi ${it.done ? 'done' : ''}`}>
                           <button className="pi-ck" onClick={() => flip(d, it, !it.done)}>✓</button>
                           {it.u
-                            ? <a className="pi-name" href={it.u} target="_blank" rel="noopener noreferrer">{it.n}</a>
-                            : <span className="pi-name">{it.n}</span>}
+                            ? <a className="pi-name" href={it.u} target="_blank" rel="noopener noreferrer">{it.kind === 'extra' ? extraLabel(it) : it.n}</a>
+                            : <span className="pi-name">{it.kind === 'extra' ? extraLabel(it) : it.n}</span>}
+                          {it.lc && <span className="lc-num">#{it.lc}</span>}
                           {it.kind === 'extra'
                             ? <span className="judge j-user">＋</span>
                             : <span className={`judge ${JC[it.j] || 'j-drill'}`}>{it.j || 'drill'}</span>}
@@ -95,6 +99,11 @@ export default function PlanPanel({ s, onOpenDay }) {
                             <button className="rm" title="Remove (logged — can re-add later)"
                               style={{ position: 'static', opacity: 1, marginLeft: 'auto' }}
                               onClick={() => s.removeItem(d.id, it.idx, { title: it.n, u: it.u })}>✕</button>
+                          )}
+                          {it.kind === 'extra' && (
+                            <button className="rm" title="Delete this question"
+                              style={{ position: 'static', opacity: 1 }}
+                              onClick={() => s.removeExtra(it.extraId)}>✕</button>
                           )}
                         </li>
                       ))}

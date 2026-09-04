@@ -1,64 +1,269 @@
-# prj-DSA — DSA·400 Tracker + Pattern Master
+# prj-DSA — DSA·400 Consistency Engine + Pattern Master
 
-One React + Supabase app that merges **two** projects into a single usable website:
+One **React (Vite) + Supabase** website that merges two projects into a single product:
 
-| Route | What |
+1. **DSA·400 Tracker** — a 400-day, 3-phase plan for Data Structures & Algorithms, gamified
+   around a GitHub-style "don't break the chain" commitment. Emerald theme, dark mode only.
+2. **Pattern Master** — a faithful port of `dsa_Patterns_new.html`, the 40-pattern
+   DSA playbook (cyan theme). Every question is cross-referenced into the 400-day plan.
+
+> Deployed at **https://dsa-400.vercel.app**
+
+---
+
+## Table of contents
+
+- [What it does](#what-it-does)
+- [Routes](#routes)
+- [Feature list](#feature-list)
+- [Tech stack](#tech-stack)
+- [Project structure](#project-structure)
+- [Data model (Supabase)](#data-model-supabase)
+- [Security model](#security-model)
+- [The commitment & verification flow](#the-commitment--verification-flow)
+- [Included vs optional (how customization works)](#included-vs-optional-how-customization-works)
+- [Getting started (local)](#getting-started-local)
+- [Deploying (Supabase + Vercel)](#deploying-supabase--vercel)
+- [Demo mode](#demo-mode)
+- [Scripts](#scripts)
+
+---
+
+## What it does
+
+- You **commit** to 400 days of DSA. Onboarding asks for a **permanent start date** and a
+  **statement of commitment**.
+- The app lays out all 400 days onto a real calendar, anchored to that start date.
+- Every day has a concept and a question set. Tick every question and **seal** the day —
+  only sealed days count toward your streak and progress.
+- A **chain** (GitHub contribution style) visualises your consistency.
+- You can fully **customize** the plan: make whole weeks/days optional, remove questions,
+  and import your own LeetCode / Codeforces / GFG / CSES / SPOJ / AtCoder questions.
+- Your commitment is sealed into a **SHA-512 hash** and a downloadable **certificate image**
+  with a QR code. Anyone who scans it can verify your *consistency* (not your private statement).
+- A **Pattern Master** reference is built in, linked bidirectionally to the plan.
+
+---
+
+## Routes
+
+| Route | Access | What |
+|---|---|---|
+| `/login`, `/register` | public | Email/password + **GitHub OAuth** sign-in |
+| `/onboarding` | signed-in, not committed | Start date → statement → topic selection → commitment card |
+| `/` | signed-in | The **DSA·400 tracker** (hero/chain, today, calendar, plan, progress) |
+| `/questions` | public | Browse **every week and every question** before committing |
+| `/profile` | signed-in | Identity, certificate, stats, import, **full plan editor**, extras manager, removed log |
+| `/patterns` | signed-in | **Pattern Master** (40 patterns, cyan theme) |
+| `/hash/:hash` | see below | Commitment verification (owner vs public) |
+| `/file` | signed-in | Raw append-only event ledger (JSON export) |
+
+---
+
+## Feature list
+
+### Tracker dashboard (`/`)
+- Hero with live stats: days sealed `/400`, questions solved, current & best streak.
+- Slim horizontal **chain** — click any cell to open that day.
+- **Today's radar** — the day's question set, one-tap solve ticks, notes with a full edit
+  **timeline**, and the **Seal day** button.
+- **Calendar** — the 400-day plan projected onto real dates; sealed glow, missed fade, future locked.
+- **The plan** — searchable/filterable week list with per-day, per-question controls.
+- **Progress** — analytics, extra questions, and the removed-items log.
+
+### Customization & the pointer
+- Every week shows `X included · Y optional` (see [Included vs optional](#included-vs-optional-how-customization-works)).
+- Make a week or a single day **optional**, remove any question (it stays logged so you can
+  restore it), and add your own questions to any day.
+- The **pointer** (your "current day") is always the first *included, unsealed* day — so if you
+  remove today or a whole week, the tracker **moves forward automatically**. You can also jump
+  to any day from the day-nav or from **Profile → Save & jump**.
+
+### Profile (`/profile`)
+- Identity hero (avatar, username, email, `DSA400xxxxxxx` commitment-id, dates, current day).
+- Live **certificate** with download (progress updates daily).
+- Stats + pace analysis (ahead/behind, projected finish date).
+- **Import questions** — paste LeetCode numbers, links from any platform, or `{link:Name:Question-no}`.
+  - `460` → resolves to **LFU Cache : 460** with the real LeetCode link (full 4,042-problem index).
+  - Live preview shows what each line resolves to before you import.
+- **Extras manager** — reschedule, mark done, save-for-later, delete.
+- **Plan editor** — week → day → question. Toggle days, remove/add questions per day, with a
+  **Save & jump** button that takes you to your new current day in the tracker.
+- Removed-questions log with restore.
+
+### Search (`⌕`, opens from the nav)
+- Search by question name **or LeetCode number**.
+- `56` instantly shows **56 · Merge Intervals** wherever it lives in your 400 days
+  (which day, or "covered in Pattern Master", or "your extra").
+- If it's not in your plan, you get a one-tap **Add** with an optional **schedule day**.
+
+### Commitment certificate (image)
+Contains **only**: start date, end date (stacked vertically), SHA-512 hash, QR code,
+username, and the `DSA400xxxxxxx` commitment-id.
+- **Never** shows the commitment statement, and never shows the hash URL as text.
+- First download (no progress yet) shows a **motivational quote**.
+- Later downloads show a **live progress band** (days sealed, %, streak, solved).
+
+### Verification (`/hash/:hash`)
+- Not signed in → redirected to **login**, then returned to the hash page.
+- Signed in as the **owner** → full statement, dates, analysis, weekly map, solved list, certificate.
+- Signed in as **anyone else** → **consistency only** (days sealed, solved, streak, %) — the
+  statement is never revealed.
+- Unknown hash / no permission → **403**.
+
+### Motivational quotes
+The login page and the verification page show a **fresh quote on every visit**
+(consistency / goals / discipline).
+
+### Pattern Master (`/patterns`)
+- The complete original `dsa_Patterns_new.html` content, preserved verbatim behind `/patterns`.
+- Cyan theme (the only non-emerald page), dark mode, no theme switcher.
+- Cross-links `📌 Day N` into the DSA-400 plan and back.
+
+---
+
+## Tech stack
+
+- **React 18** + **Vite 5** (SPA, hash-free client routing via `react-router-dom`).
+- **Supabase** (Postgres + Auth + RLS) — the backend, replacing the old `server.js`.
+- **qrcode** (client-side QR generation) and the **Web Crypto API** (SHA-512 hashing).
+- Plain CSS (custom properties) — emerald/dark for the tracker, cyan/dark for Pattern Master.
+
+---
+
+## Project structure
+
+```
+prj-dsa/
+├── index.html                 # SPA entry
+├── vercel.json                # SPA rewrites + build config for Vercel
+├── package.json
+├── .env.example               # VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY template
+├── DEPLOY.md                  # step-by-step Supabase + Vercel + GitHub OAuth guide
+├── supabase/schema.sql        # tables, RLS, triggers, verification RPC (idempotent)
+├── tools/extract.mjs          # one-time generator (parses the originals into data)
+└── src/
+    ├── main.jsx               # entry, mounts <App/>
+    ├── App.jsx                # routes + protected-route wrapper
+    ├── styles.css             # emerald/dark + cyan scopes
+    ├── context/AuthContext.jsx# session, signUp/signIn/signInWithGitHub, displayName
+    ├── hooks/useTrackerData.js# data layer: load, mutations, derived stats, effectiveItems
+    ├── lib/
+    │   ├── supabase.js        # client + configured flag
+    │   ├── utils.js           # dates, SHA-512, commitmentHash, genCommitId, extraLabel
+    │   ├── lc-titles.js       # full LeetCode index (number → title + slug), 4,042 problems
+    │   ├── import.js          # resolveImportToken / judgeFromUrl / judge classes
+    │   ├── quotes.js          # rotating motivational quotes
+    │   ├── toast.js           # toast bus
+    │   ├── tracker-data.js    # 400-day plan (phases, units, days, items) + LC cross-refs
+    │   └── patterns-data.js   # the 40-pattern Pattern Master content
+    ├── pages/                 # Login, Register, Onboarding, Tracker, Patterns,
+    │                          # Commitment (/hash), Ledger (/file), Profile, Questions
+    └── components/            # Nav, Chain, SearchModal, TodayPanel, CalendarPanel,
+                               # PlanPanel, ProgressPanel, CommitmentCard
+```
+
+---
+
+## Data model (Supabase)
+
+| Table | Purpose |
 |---|---|
-| `/login`, `/register` | Auth (Supabase email/password) |
-| `/onboarding` | Pick a **permanent** start date, write a commitment statement, choose what to learn |
-| `/` | **DSA·400 tracker** — slim GitHub/LeetCode-style chain, calendar, plan, progress |
-| `/patterns` | **Pattern Master** — the full 40-pattern playbook (cyan theme, faithful port) |
-| `/hash/:hash` | Public commitment-verification page (login-gated) |
-| `/file` | Raw append-only ledger (JSON / JSONL export) |
+| `profiles` | username (auto-created on signup for email *and* OAuth users) |
+| `commitment` | one row per user: statement, `hash`, `start_date`, `end_date`, `commit_id` — **immutable** |
+| `excluded_days` | days/topics the user made optional |
+| `removed_items` | questions the user removed (restorable) |
+| `extra_items` | user-added questions (platform, target day, status) |
+| `day_progress` | sealed days |
+| `item_progress` | solved items |
+| `notes` / `note_history` | pattern notes + edit timeline |
+| `events` | append-only ledger of everything the user did |
+| `streak_log` | streak snapshots recorded server-side |
 
-## Quick start
+The schema also defines a SECURITY DEFINER function
+`get_commitment_verification(p_hash)` that returns exactly what a visitor is allowed to see
+(the statement only for the owner).
+
+---
+
+## Security model
+
+- Every table is RLS-locked to the signed-in user.
+- `commitment` has **no UPDATE policy** → the start date and SHA-512 hash can never change.
+- A **trigger** on `day_progress` rejects sealing any day whose calendar date is in the future
+  (the calendar derives from the permanent `start_date`).
+- `events` and `streak_log` are **append-only** — streaks/completions are server-recorded,
+  the client cannot edit history.
+- The commitment hash is `SHA-512(statement + "::" + user_id)`.
+
+---
+
+## The commitment & verification flow
+
+1. Onboarding → `setCommitment` stores the statement, computes the hash, and generates a
+   `DSA400xxxxxxx` commitment-id.
+2. The certificate QR encodes `https://dsa-400.vercel.app/hash/{hash}`.
+3. Scanning the QR lands on `/hash/{hash}`:
+   - not signed in → redirected to `/login?return=/hash/{hash}`
+   - owner → full commitment + analysis
+   - other users → consistency-only verification
+   - unknown/denied → 403.
+
+---
+
+## Included vs optional (how customization works)
+
+- **Included** days count toward your 400-day plan: they appear in your chain, calendar and
+  current-day pointer.
+- **Optional** (excluded) days are skipped: they don't block your pointer and don't count in
+  progress percentages — but they stay **logged**, so you can re-include them anytime without
+  losing their history.
+- The **current day (pointer)** is the first included, unsealed day. Remove a day or a whole
+  week and the tracker automatically moves forward; use **Profile → Save & jump** to jump there.
+
+---
+
+## Getting started (local)
 
 ```bash
 npm install
-cp .env.example .env   # fill in your Supabase URL + anon key
-npm run dev
+cp .env.example .env     # fill VITE_SUPABASE_URL + VITE_SUPABASE_ANON_KEY
+npm run dev              # http://localhost:5173
 ```
 
-Then run `supabase/schema.sql` once in your Supabase SQL Editor.
+Then open the Supabase SQL Editor and run the **entire** `supabase/schema.sql`
+(it is idempotent — safe to re-run).
 
-## Supabase setup
+---
 
-1. Create a Supabase project (the `prj-DSA` one).
-2. SQL Editor → paste & run `supabase/schema.sql` (tables, RLS, the
-   future-day sealing trigger, and the auto-profile trigger).
-3. Project Settings → API → copy the Project URL and anon key into `.env`.
-4. (Recommended) enable **Email confirmations off** for quick testing under
-   Authentication → Providers → Email.
+## Deploying (Supabase + Vercel)
 
-## What's enforced server-side
+Full step-by-step instructions live in [`DEPLOY.md`](DEPLOY.md). In short:
 
-- `commitment` has **no UPDATE policy** → start date & SHA-512 hash are permanent.
-- `day_progress` has a **trigger** that rejects sealing any day whose calendar
-  date (from `commitment.start_date`) is in the future.
-- `events` and `streak_log` are **append-only** (insert/select only).
-- Every table is RLS-locked to the signed-in user.
+1. **Supabase** — create project, run `supabase/schema.sql`, copy the Project URL + anon key,
+   configure Auth (Site URL + redirect URLs), optionally enable **GitHub OAuth**.
+2. **Vercel** — import the repo, set `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`,
+   build command `npm run build`, output dir `dist`. `vercel.json` handles the SPA rewrites
+   (so `/hash/…`, `/profile`, etc. all serve `index.html`).
 
-## Feature map (user requirements)
+---
 
-- Hero chain → slim horizontal grid (GitHub contribution style). ✅
-- Search by question name **or LeetCode number** → shows if it's in your plan. ✅
-- Not found → add it to a day / save for later; user additions are tagged & filterable. ✅
-- One theme (**emerald**) + dark only, theme switch removed. ✅ (Patterns page keeps cyan.)
-- Register/login matching the theme. ✅
-- Onboarding popup: start date (permanent), commitment statement, topic selection. ✅
-- 7:4 commitment image download (dates + end date) + SHA-512(statement + user id) + QR. ✅
-- QR → `/hash/{hash}` → login-gated verification of statement/hash/dates. ✅
-- Server logs: sealed days, chain breaks, streak snapshots — user can't edit. ✅
-- Date gating: can't jump to future days/topics/questions. ✅
-- Pattern notes per day, editable, with a full edit **timeline**. ✅
-- Raw ledger `/file` for API-style export. ✅
-- Footer "data parsed from dsa400.md / 10 themes" details removed. ✅
-- Fixed 3-phase classification removed → user chooses what to learn; topics/questions removable with a restore log. ✅
-- Pattern Master content preserved; all its questions cross-referenced into DSA-400 (`📌 Day N` links both ways). ✅
+## Demo mode
 
-## Notes
+Without a valid `.env`, the app runs in **demo mode**: everything persists to `localStorage`
+so you can explore the whole UI (including onboarding and the certificate). Connect Supabase
+to make it permanent and multi-device.
 
-- Without `.env`, the app runs in **demo mode** (localStorage) so you can explore
-  the UI. Connect Supabase to make everything permanent.
-- The 40 patterns and the 400-day plan were extracted programmatically from the
-  original files (`tools/extract.mjs`) into `src/lib/*-data.js` — no content loss.
+---
+
+## Scripts
+
+```bash
+npm run dev      # start the Vite dev server
+npm run build    # production build → dist/
+npm run preview  # preview the production build
+```
+
+---
+
+*Patterns over problems — always.*

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { TRACKER_DATA } from '../lib/tracker-data';
 import { effectiveItems } from '../hooks/useTrackerData';
-import { ymdForDay, pretty, todayIso, dayDiff } from '../lib/utils';
+import { ymdForDay, pretty, todayIso, dayDiff, extraLabel } from '../lib/utils';
 import { toast } from '../lib/toast';
 
 const PHASES = TRACKER_DATA.phases;
@@ -65,8 +65,9 @@ export default function TodayPanel({ s, day, setDay }) {
                 <button className="pi-ck" role="checkbox" aria-checked={it.done}
                   onClick={() => flip(it, !it.done)} title="Mark solved">✓</button>
                 {it.u
-                  ? <a className="pi-name" href={it.u} target="_blank" rel="noopener noreferrer">{it.n}</a>
-                  : <span className="pi-name">{it.n}</span>}
+                  ? <a className="pi-name" href={it.u} target="_blank" rel="noopener noreferrer">{it.kind === 'extra' ? extraLabel(it) : it.n}</a>
+                  : <span className="pi-name">{it.kind === 'extra' ? extraLabel(it) : it.n}</span>}
+                {it.lc && <span className="lc-num">#{it.lc}</span>}
                 {it.pattern && (
                   <a className="chip pat-chip" title={`See “${it.pattern.name}” in Pattern Master`}
                     href={`/patterns#${it.pattern.id}`}>✦ {it.pattern.name}</a>

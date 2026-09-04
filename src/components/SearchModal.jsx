@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { TRACKER_DATA, LC_TO_DAYS, LC_TITLES } from '../lib/tracker-data';
-import { lcURL } from '../lib/utils';
+import { lcInfo } from '../lib/lc-titles';
+import { extraLabel } from '../lib/utils';
 import { toast } from '../lib/toast';
 
 const DAYS = TRACKER_DATA.days;
@@ -18,12 +19,13 @@ export default function SearchModal({ s, onClose, onOpenDay }) {
     if (!qn) return null;
     if (numeric) {
       const id = qn;
+      const info = lcInfo(id);                       // full LeetCode index (4,042 problems)
       const hits = (LC_TO_DAYS[id] || []).filter(h => !s.excluded[h.day]);
       const inPatterns = LC_TITLES.some(x => String(x.n) === id);
       const extra = s.extras.filter(e => e.lc === id);
-      return { kind: 'num', id, hits, inPatterns, extra };
+      return { kind: 'num', id, info, hits, inPatterns, extra };
     }
-    // title search
+    // title / text search
     const hits = [];
     for (const d of DAYS) {
       if (s.excluded[d.id]) continue;
@@ -33,12 +35,16 @@ export default function SearchModal({ s, onClose, onOpenDay }) {
       });
     }
     const extras = s.extras.filter(e => norm(e.title).includes(norm(qn)));
-    const inPatterns = LC_TITLES.filter(x => norm(x.t).includes(norm(qn))).slice(0, 12);
-    return { kind: 'text', hits: hits.slice(0, 30), extras, inPatterns };
+    // matches in the full LeetCode index (Pattern Master + beyond)
+    const lcMatches = [];
+    for (const x of LC_TITLES) {
+      if (norm(x.t).includes(norm(qn))) lcMatches.push(x);
+    }
+    return { kind: 'text', hits: hits.slice(0, 30), extras, lcMatches: lcMatches.slice(0, 10) };
   }, [qn, numeric, s]);
 
-  const startAdd = (lc, title) => {
-    setMode({ lc: lc || '', title: title || q, url: lc ? lcURL(lc, title) : '', targetDay: '' });
+  const startAdd = (lc, title, url) => {
+    setMode({ lc: lc || '', title: title || q, url: url || '', targetDay: '' });
   };
 
   const submitAdd = async where => {
@@ -56,19 +62,21 @@ export default function SearchModal({ s, onClose, onOpenDay }) {
         <button className="icon-btn modal-close" onClick={onClose}>✕</button>
         <h3>⌕ Search the plan</h3>
         <p style={{ color: 'var(--text-mute)', fontSize: 13 }}>
-          Search by question name or <b>LeetCode number</b> — instantly see if it's in your 400 days.
+          Search by question name or <b>LeetCode number</b> — the whole LeetCode index is linked, so <b>56</b> finds <b>56 · Merge Intervals</b> anywhere in your 400 days.
         </p>
         <input className="search-in" style={{ width: '100%', marginBottom: 12 }} autoFocus
           value={q} onChange={e => setQ(e.target.value)}
-          placeholder="e.g. 76, 560, or “Minimum Window Substring”…" />
+          placeholder="e.g. 56, 460, 560, or “Merge Intervals”…" />
 
         {results && !mode && (
           <div>
             {results.kind === 'num' && (
               <div>
-                {results.hits.length > 0 && (
-                  <div className="auth-ok">✅ Found in your plan — {results.hits.length} place{results.hits.length > 1 ? 's' : ''}:</div>
-                )}
+                <div className="auth-ok" style={{ marginBottom: 8 }}>
+                  {results.info ? <>#{results.info.n} · <a href={results.info.url} target="_blank" rel="noopener noreferrer">{results.info.t}</a></> : <>#{results.id} · LeetCode problem</>}
+                  {results.inPatterns ? <span className="chip chip-neutral" style={{ marginLeft: 8 }}>✦ in Pattern Master</span> : null}
+                </div>
+                {results.hits.length > 0 && <div className="auth-ok">✅ In your plan — {results.hits.length} place{results.hits.length > 1 ? 's' : ''}:</div>}
                 {results.hits.length > 0 && results.hits.map((h, i) => (
                   <a key={i} className="lc" style={{ marginBottom: 6 }} onClick={() => { onClose(); onOpenDay(h.day); }}>
                     <span className="lc-id">#{results.id}</span>
@@ -85,8 +93,9 @@ export default function SearchModal({ s, onClose, onOpenDay }) {
                 {results.hits.length === 0 && results.extra.length === 0 && (
                   <div className="auth-err">
                     Not in your 400-day plan{results.inPatterns ? ' (it is covered in Pattern Master)' : ''}.<br />
-                    <button className="btn btn-soft btn-sm" style={{ marginTop: 8 }} onClick={() => startAdd(results.id, LC_TITLES.find(x => String(x.n) === results.id)?.t || `LeetCode ${results.id}`)}>
-                      + Add this question
+                    <button className="btn btn-soft btn-sm" style={{ marginTop: 8 }}
+                      onClick={() => startAdd(results.id, results.info ? results.info.t : `LeetCode ${results.id}`, results.info ? results.info.url : 'https://leetcode.com/problems/')}>
+                      ＋ Add #{results.id}{results.info ? ` · ${results.info.t}` : ''} to my plan
                     </button>
                   </div>
                 )}
@@ -104,16 +113,25 @@ export default function SearchModal({ s, onClose, onOpenDay }) {
                 ))}
                 {results.extras.map(e => (
                   <div key={e.id} className="lc" style={{ marginBottom: 6 }}>
-                    <span className="lc-id">＋</span><span className="lc-t">{e.title}</span>
+                    <span className="lc-id">＋</span><span className="lc-t">{extraLabel(e)}</span>
                     <span className="lc-day">{e.status === 'done' ? 'done' : 'your extra'}</span>
                   </div>
                 ))}
-                {results.hits.length === 0 && results.extras.length === 0 && (
+                {results.lcMatches.length > 0 && (
+                  <div style={{ marginTop: 8 }}>
+                    <div className="auth-ok">Matching LeetCode problems:</div>
+                    {results.lcMatches.map(x => (
+                      <a key={x.n} className="lc" style={{ marginBottom: 6 }}
+                        onClick={() => startAdd(String(x.n), x.t, lcInfo(x.n) ? lcInfo(x.n).url : 'https://leetcode.com/problems/')}>
+                        <span className="lc-id">#{x.n}</span><span className="lc-t">{x.t}</span>
+                        <span className="lc-day">＋ add</span>
+                      </a>
+                    ))}
+                  </div>
+                )}
+                {results.hits.length === 0 && results.extras.length === 0 && results.lcMatches.length === 0 && (
                   <div className="auth-err">
                     Not found in your plan.
-                    {results.inPatterns.length > 0 && (
-                      <div style={{ marginTop: 6, fontSize: 12 }}>In Pattern Master: {results.inPatterns.slice(0, 4).map(x => x.t).join(', ')}</div>
-                    )}
                     <button className="btn btn-soft btn-sm" style={{ marginTop: 8 }} onClick={() => startAdd('', q)}>+ Add this question</button>
                   </div>
                 )}
@@ -126,7 +144,7 @@ export default function SearchModal({ s, onClose, onOpenDay }) {
           <div className="card" style={{ background: 'var(--bg-sunken)' }}>
             <div className="card-t">Add a question</div>
             <div className="field"><label>LeetCode number (optional)</label>
-              <input value={mode.lc} onChange={e => setMode({ ...mode, lc: e.target.value })} placeholder="e.g. 76" /></div>
+              <input value={mode.lc} onChange={e => setMode({ ...mode, lc: e.target.value })} placeholder="e.g. 460" /></div>
             <div className="field"><label>Title</label>
               <input value={mode.title} onChange={e => setMode({ ...mode, title: e.target.value })} /></div>
             <div className="field"><label>Link (optional)</label>

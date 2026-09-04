@@ -10,9 +10,11 @@ const N_DAYS = DAYS.length;
 
 /* pattern reference for each original tracker item (lc number via slug match) */
 const ITEM_PATTERN = {};
+const ITEM_LC = {}; // day:idx → leetcode number
 for (const lc of Object.keys(LC_TO_DAYS)) {
   for (const hit of LC_TO_DAYS[lc]) {
     ITEM_PATTERN[`${hit.day}:${hit.idx}`] = LC_TO_PATTERN[lc] || null;
+    ITEM_LC[`${hit.day}:${hit.idx}`] = lc;
   }
 }
 
@@ -286,7 +288,7 @@ export function useTrackerData() {
     setCommitment, toggleProb, sealDay, setNote, loadNoteHistory,
     addExtra, scheduleExtra, setExtraDone, removeExtra,
     setDayIncluded, setUnitIncluded, removeItem, restoreItem,
-    ITEM_PATTERN, LC_TO_DAYS, LC_TO_PATTERN, LC_TITLES,
+    ITEM_PATTERN, ITEM_LC, LC_TO_DAYS, LC_TO_PATTERN, LC_TITLES,
   };
 }
 
@@ -296,10 +298,10 @@ export function effectiveItems(d, s, extrasForDay) {
   d.items.forEach((it, i) => {
     if (s.removed[d.id] && s.removed[d.id][i]) return;
     const key = pKey(d.id, i);
-    out.push({ ...it, idx: i, kind: 'original', done: !!s.done[key], pattern: ITEM_PATTERN[key] || null });
+    out.push({ ...it, idx: i, kind: 'original', done: !!s.done[key], pattern: ITEM_PATTERN[key] || null, lc: ITEM_LC[key] || null });
   });
   (extrasForDay || []).forEach(e => {
-    out.push({ n: e.title, j: 'USER', u: e.url, p: false, idx: `x${e.id}`, kind: 'extra', extraId: e.id, done: e.status === 'done', pattern: null });
+    out.push({ n: e.title, j: 'USER', u: e.url, p: false, idx: `x${e.id}`, kind: 'extra', extraId: e.id, done: e.status === 'done', pattern: null, lc: e.lc || null });
   });
   return out;
 }

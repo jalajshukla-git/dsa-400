@@ -4,10 +4,11 @@ import { pretty } from '../lib/utils';
 import { pickQuote } from '../lib/quotes';
 
 /* The commitment certificate.
-   Contains: start date · end date · SHA-512 hash · QR → /hash/{hash} ·
-   username · commitment-id.  NEVER the statement, never the link text.
+   Contains: start date · end date (stacked vertically, never on one line) ·
+   SHA-512 hash · QR → /hash/{hash} · username · commitment-id.
+   NEVER the statement, never the link text.
    progress == null  → motivational quote (first download, no progress yet)
-   progress set      → live verification certificate (updated daily)      */
+   progress set      → live verification certificate (updated daily)          */
 export default function CommitmentCard({ commitment, username, progress = null, quote = null }) {
   const [qr, setQr] = useState(null);
   const canvasRef = useRef(null);
@@ -21,18 +22,32 @@ export default function CommitmentCard({ commitment, username, progress = null, 
     return () => { alive = false; };
   }, [link]);
 
-  /* ── canvas painting (7:4 download) ── */
-  const wrap = (ctx, text, x, y, maxW, lh) => {
+  /* ── canvas painting (1400×800, dates stacked vertically) ── */
+  const wrapLines = (ctx, text, maxW) => {
     const words = String(text).split(' ');
-    let line = '', yy = y;
+    const lines = [];
+    let line = '';
     for (const w of words) {
-      const test = line + w + ' ';
-      if (ctx.measureText(test).width > maxW && line) { ctx.fillText(line.trim(), x, yy); line = w + ' '; yy += lh; }
+      const test = line ? line + ' ' + w : w;
+      if (ctx.measureText(test).width > maxW && line) { lines.push(line); line = w; }
       else line = test;
     }
-    if (line) ctx.fillText(line.trim(), x, yy);
-    return yy;
+    if (line) lines.push(line);
+    return lines;
   };
+
+  /* wrap a run of characters (for the SHA-512 hex string, which has no spaces) */
+  const wrapChars = (ctx, text, maxW) => {
+    const lines = [];
+    let line = '';
+    for (const ch of String(text)) {
+      if (ctx.measureText(line + ch).width > maxW && line) { lines.push(line); line = ch; }
+      else line += ch;
+    }
+    if (line) lines.push(line);
+    return lines;
+  };
+
   const rrect = (ctx, x, y, w, h, r) => {
     ctx.beginPath();
     ctx.moveTo(x + r, y);
@@ -47,6 +62,8 @@ export default function CommitmentCard({ commitment, username, progress = null, 
     const cv = canvasRef.current, ctx = cv.getContext('2d');
     const W = 1400, H = 800;
     cv.width = W; cv.height = H;
+    const LX = 78;                    // left column x
+    const LMAX = 920;                 // left column max width (before the QR plate)
 
     const bg = ctx.createLinearGradient(0, 0, W, H);
     bg.addColorStop(0, '#063d29'); bg.addColorStop(0.55, '#02140d'); bg.addColorStop(1, '#043323');
@@ -58,69 +75,75 @@ export default function CommitmentCard({ commitment, username, progress = null, 
     for (let x = 0; x < W; x += 52) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke(); }
     for (let y = 0; y < H; y += 52) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke(); }
 
-    // accent frame
     rrect(ctx, 26, 26, W - 52, H - 52, 34);
     ctx.strokeStyle = 'rgba(52,211,153,.45)'; ctx.lineWidth = 3; ctx.stroke();
 
-    // brand + commitment id
-    ctx.fillStyle = '#6ee7b7'; ctx.font = '700 24px monospace';
-    ctx.fillText('◈ DSA·400 — THE CONSISTENCY ENGINE', 78, 92);
+    /* brand + commitment id */
+    ctx.fillStyle = '#6ee7b7'; ctx.font = '700 24px monospace'; ctx.textAlign = 'left';
+    ctx.fillText('◈ DSA·400 — THE CONSISTENCY ENGINE', LX, 92);
     const cid = commitment.commit_id || '—';
     ctx.font = '800 30px "JetBrains Mono",monospace';
     const cw = ctx.measureText(cid).width;
     rrect(ctx, W - 78 - cw - 44, 58, cw + 44, 52, 14);
     ctx.fillStyle = 'rgba(16,185,129,.12)'; ctx.fill();
     ctx.strokeStyle = 'rgba(52,211,153,.5)'; ctx.lineWidth = 1.5; ctx.stroke();
-    ctx.fillStyle = '#a7f3d0'; ctx.textAlign = 'left';
-    ctx.fillText(cid, W - 78 - cw - 20, 95);
+    ctx.fillStyle = '#a7f3d0'; ctx.fillText(cid, W - 78 - cw - 20, 95);
 
-    // dates
+    /* dates — stacked vertically, never side by side */
     ctx.fillStyle = '#7fb8a2'; ctx.font = '600 17px monospace';
-    ctx.fillText('START DATE', 78, 250);
-    ctx.fillText('END DATE — 400 DAYS OF CONSISTENCY', 428, 250);
-    ctx.fillStyle = '#34d399'; ctx.font = '800 62px Poppins, sans-serif';
-    ctx.fillText(pretty(commitment.start_date), 78, 322);
-    ctx.fillText(pretty(commitment.end_date), 428, 322);
-    // arrow
-    ctx.fillStyle = 'rgba(52,211,153,.6)'; ctx.font = '600 30px monospace';
-    ctx.fillText('→', 372, 320);
+    ctx.fillText('START DATE', LX, 186);
+    ctx.fillStyle = '#34d399'; ctx.font = '800 56px Poppins, sans-serif';
+    ctx.fillText(pretty(commitment.start_date), LX, 248);
 
-    // hash (no link text)
     ctx.fillStyle = '#7fb8a2'; ctx.font = '600 17px monospace';
-    ctx.fillText('SHA-512 — STATEMENT + USER ID', 78, 440);
+    ctx.fillText('END DATE · 400 DAYS OF CONSISTENCY', LX, 322);
+    ctx.fillStyle = '#34d399'; ctx.font = '800 56px Poppins, sans-serif';
+    ctx.fillText(pretty(commitment.end_date), LX, 384);
+
+    /* hash — wrapped dynamically, no link text */
+    ctx.fillStyle = '#7fb8a2'; ctx.font = '600 17px monospace';
+    ctx.fillText('SHA-512 · STATEMENT + USER ID', LX, 458);
     ctx.fillStyle = '#a7f3d0'; ctx.font = '500 21px "JetBrains Mono",monospace';
     const hash = commitment.hash || '';
-    for (let i = 0; i < hash.length; i += 60) ctx.fillText(hash.slice(i, i + 60), 78, 472 + (i / 60) * 30);
+    let hashLines = wrapChars(ctx, hash, LMAX);
+    if (hashLines.length > 3) {
+      hashLines = hashLines.slice(0, 3);
+      hashLines[2] = hashLines[2].slice(0, Math.max(0, hashLines[2].length - 3)) + '…';
+    }
+    let hy = 490;
+    hashLines.forEach(l => { ctx.fillText(l, LX, hy); hy += 30; });
 
-    // username
-    ctx.fillStyle = '#7fb8a2'; ctx.font = '600 18px monospace';
-    ctx.fillText('HELD BY', 78, 640);
+    /* username */
+    ctx.fillStyle = '#7fb8a2'; ctx.font = '600 17px monospace';
+    ctx.fillText('HELD BY', LX, 620);
     ctx.fillStyle = '#f2f7f4'; ctx.font = '800 34px Poppins, sans-serif';
-    ctx.fillText(username || '—', 78, 686);
+    ctx.fillText(username || '—', LX, 664);
 
-    // bottom band: quote (no progress) or progress tracks
-    rrect(ctx, 78, 718, 720, 54, 16);
+    /* bottom band — quote (no progress) or live progress */
+    rrect(ctx, LX, 716, LMAX, 56, 16);
     ctx.fillStyle = 'rgba(16,185,129,.08)'; ctx.fill();
     ctx.strokeStyle = 'rgba(52,211,153,.28)'; ctx.lineWidth = 1; ctx.stroke();
     if (progress) {
       const pct = progress.activeDays ? Math.round(100 * progress.sealed / progress.activeDays) : 0;
       ctx.fillStyle = '#a7f3d0'; ctx.font = '700 19px "JetBrains Mono",monospace';
-      ctx.fillText(`PROGRESS  ·  ${progress.sealed}/${progress.activeDays} days  ·  ${pct}%  ·  streak ${progress.streak}  ·  ${progress.solved} solved`, 100, 752);
+      ctx.fillText(`PROGRESS  ·  ${progress.sealed}/${progress.activeDays} days  ·  ${pct}%  ·  streak ${progress.streak}  ·  ${progress.solved} solved`, LX + 22, 751);
     } else {
-      ctx.fillStyle = '#6ee7b7'; ctx.font = 'italic 600 20px Poppins, sans-serif';
-      wrap(ctx, '“' + theQuote + '”', 100, 752, 680, 26);
+      ctx.fillStyle = '#6ee7b7'; ctx.font = 'italic 600 19px Poppins, sans-serif';
+      let ql = wrapLines(ctx, '“' + theQuote + '”', LMAX - 44);
+      if (ql.length > 2) { ql = ql.slice(0, 2); ql[1] = ql[1].slice(0, Math.max(0, ql[1].length - 3)) + '…'; }
+      ql.forEach((l, i) => ctx.fillText(l, LX + 22, 743 + i * 26));
     }
 
-    // QR plate
-    rrect(ctx, 1070, 460, 262, 262, 24);
+    /* QR plate */
+    rrect(ctx, 1068, 452, 264, 264, 24);
     ctx.fillStyle = '#eafff7'; ctx.fill();
     if (qr) {
       const img = new Image();
       await new Promise(res => { img.onload = res; img.src = qr; });
-      ctx.drawImage(img, 1084, 474, 234, 234);
+      ctx.drawImage(img, 1082, 466, 236, 236);
     }
     ctx.fillStyle = '#04301f'; ctx.font = '800 18px monospace'; ctx.textAlign = 'center';
-    ctx.fillText('scan to verify', 1201, 760);
+    ctx.fillText('scan to verify', 1200, 762);
     ctx.textAlign = 'left';
   };
 
@@ -148,7 +171,6 @@ export default function CommitmentCard({ commitment, username, progress = null, 
                 <span className="cert-l">Start date</span>
                 <span className="cert-v">{pretty(commitment.start_date)}</span>
               </div>
-              <span className="cert-arrow">→</span>
               <div className="cert-date">
                 <span className="cert-l">End date · 400 days</span>
                 <span className="cert-v">{pretty(commitment.end_date)}</span>
