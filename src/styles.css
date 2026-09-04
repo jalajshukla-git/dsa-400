@@ -371,76 +371,59 @@ footer .wrap { display: flex; gap: 18px; flex-wrap: wrap; justify-content: space
 /* ═══ Hero: canvas as background layer, content in normal flow above it ═══ */
 .pat-hero {
   position: relative;
-  min-height: 100vh;
+  min-height: min(92vh, 780px);
   display: flex;
   align-items: center;
   justify-content: center;
+  padding: 64px 24px 56px;
+  text-align: center;
   overflow: hidden;
-  padding: 96px 24px 64px; /* clears fixed nav at top */
 }
 
-#heroCanvas {
+.pat-hero canvas {
   position: absolute;
   inset: 0;
   width: 100%;
   height: 100%;
-  z-index: 0;
-  pointer-events: auto; /* keep hover/click working */
-  opacity: 0.9;
+  opacity: .55;
 }
 
-/* optional: fade canvas toward the edges so text stays legible */
-.pat-hero::after {
+/* legibility scrim — darkens center-bottom where text sits, leaves top/edges clearer */
+.pat-hero::before {
   content: '';
   position: absolute;
   inset: 0;
   z-index: 1;
   pointer-events: none;
-  background: radial-gradient(
-    ellipse at center,
-    transparent 0%,
-    rgba(8, 10, 14, 0.35) 65%,
-    rgba(8, 10, 14, 0.75) 100%
-  );
+  background:
+    radial-gradient(60% 55% at 50% 62%, rgba(3,18,13,.72) 0%, rgba(3,18,13,.35) 55%, transparent 78%),
+    linear-gradient(to bottom, rgba(3,18,13,.15) 0%, transparent 22%, transparent 70%, rgba(3,18,13,.55) 100%);
 }
 
-.hero-in {
+.pat-hero .hero-in {
   position: relative;
-  z-index: 2; /* above canvas + vignette */
-  max-width: 780px;
-  margin: 0 auto;
-  text-align: center;
+  z-index: 5;
+  max-width: 860px;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 18px;
 }
 
-.hero-in .kicker { margin-bottom: 4px; }
-.hero-in h1 { margin: 0; line-height: 1.15; }
-.hero-in .hero-sub { max-width: 620px; margin: 0 auto; }
+.pat-hero .kicker { margin-bottom: 22px; }
+.pat-hero #hero h1 { margin-bottom: 26px; }
+.pat-hero .hero-sub { margin-bottom: 34px; }
+.pat-hero .cta-row { margin-top: 0; margin-bottom: 46px; }
+.pat-hero .stat-row { margin: 0 0 40px; gap: 40px; }
 
-.cta-row {
-  display: flex;
-  gap: 12px;
-  flex-wrap: wrap;
-  justify-content: center;
-  margin-top: 6px;
+.mode-chip {
+  position: relative; z-index: 5;
+  margin-top: 0;
+  background: rgba(3,18,13,.55);
+  backdrop-filter: blur(8px);
 }
+.mode-hint { margin-top: 12px; }
+#modeDots { margin-top: 14px; }
 
-.stat-row {
-  display: grid;
-  grid-template-columns: repeat(4, auto);
-  gap: 28px;
-  margin-top: 22px;
-}
-.stat-row .stat { text-align: center; }
-.stat-row .v { font-size: 28px; font-weight: 700; }
-.stat-row .l { font-size: 12px; color: var(--text-mute); }
-
-@media (max-width: 640px) {
-  .stat-row { grid-template-columns: repeat(2, auto); }
-}
 
 .mode-chip { margin-top: 24px; }
 #modeDots { margin-top: 8px; display: flex; gap: 6px; justify-content: center; }
