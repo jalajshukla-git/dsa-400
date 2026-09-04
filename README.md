@@ -56,6 +56,8 @@ One **React (Vite) + Supabase** website that merges two projects into a single p
 | `/profile` | signed-in | Identity, certificate, stats, import, **full plan editor**, extras manager, removed log |
 | `/patterns` | signed-in | **Pattern Master** (40 patterns, cyan theme) |
 | `/hash/:hash` | see below | Commitment verification (owner vs public) |
+| `/note` | signed-in | **Daily Coding Article & Note Page** (orange/ember theme) |
+| `/note/:slug` | public | Published article (read-only, rendered from Markdown + JSON) |
 | `/file` | signed-in | Raw append-only event ledger (JSON export) |
 
 ---
@@ -120,6 +122,27 @@ username, and the `DSA400xxxxxxx` commitment-id.
 The login page and the verification page show a **fresh quote on every visit**
 (consistency / goals / discipline).
 
+### Daily Coding Article & Note Page (`/note`, `/note/:slug`)
+An "Orange / Ember" themed (`data-theme="orange"`, amber `#fb923c / #f97316 / #ea580c`
+on zinc/slate dark) article authoring system:
+
+- **Split Markdown editor + live preview** (Write / Split / Preview modes).
+- **Embedded code editors** (CodeMirror 6) inside the Markdown — with **context-aware
+  autocomplete** (C++ STL / `#include` headers / `std::`, plus Java, Python, JS keywords &
+  builtins), **bracket & parentheses matching** with auto-close and orange highlight, and
+  **multi-cursor editing** (Ctrl/Cmd+Click, Alt+Click, Ctrl/Cmd+D to select next occurrence).
+- **▶ Run** code snippets via the public Piston execution API.
+- **YouTube integration** — `[Video Title](://youtube.com/…)` renders an embedded player.
+- **Clickable timestamps** — `[12:34]` / `[1:02:03]` seek the video (window event
+  `dsa400:seek` + direct postMessage seek).
+- **Hyperlink insertion** toolbar, plus bold/italic/headings/quotes/code/hr.
+- **Note timeline** — every auto-save is logged; restore any version. Draft auto-saves
+  locally (edits are logged).
+- **Publish Article** — compiles the exact JSON payload
+  (`slug, title, date, dayStreak, tags, videoUrl, contentMarkdown, isPublished`), stores it
+  locally and (when Supabase is connected) to the `articles` table, and exposes it at
+  `/note/{slug}` for anyone with the link.
+
 ### Pattern Master (`/patterns`)
 - The complete original `dsa_Patterns_new.html` content, preserved verbatim behind `/patterns`.
 - Cyan theme (the only non-emerald page), dark mode, no theme switcher.
@@ -162,14 +185,19 @@ prj-dsa/
     │   ├── lc-plan.js         # plan cross-reference: number → days (every LC question in the plan)
     │   ├── lc-lookup.js       # live-API fallback lookup for brand-new problems
     │   ├── import.js          # resolveImportToken / judgeFromUrl / judge classes
+    │   ├── articles.js        # article persistence (localStorage + Supabase `articles`)
+    │   ├── note-mdx.jsx       # markdown-it + video/timestamp rules + React token renderer
+    │   ├── note-video.js      # video registry + seekAllVideos (window event + postMessage)
     │   ├── quotes.js          # rotating motivational quotes
     │   ├── toast.js           # toast bus
     │   ├── tracker-data.js    # 400-day plan (phases, units, days, items) + LC cross-refs
     │   └── patterns-data.js   # the 40-pattern Pattern Master content
     ├── pages/                 # Login, Register, Onboarding, Tracker, Patterns,
-    │                          # Commitment (/hash), Ledger (/file), Profile, Questions
+    │                          # Commitment (/hash), Ledger (/file), Profile, Questions,
+    │                          # NoteEditor (/note), NoteView (/note/:slug)
     └── components/            # Nav, Chain, SearchModal, TodayPanel, CalendarPanel,
                                # PlanPanel, ProgressPanel, CommitmentCard
+                               # + editor/ (CodeBlock · CodeMirror, VideoEmbed, Timestamp)
 ```
 
 ---
